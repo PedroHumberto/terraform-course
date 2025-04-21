@@ -1,28 +1,28 @@
 resource "random_id" "random" {
   byte_length = 2
-  count       = 2
+  count       = var.repo_count
 }
 
 resource "github_repository" "terraform_repo" {
-  count       = 2
+  count       = var.repo_count
   name        = "terraform_repo-${random_id.random[count.index].dec}"
   description = "Teste de criação de repositório com o Terraform"
-  visibility  = "private"
+  visibility  = var.env == "dev" ? "private" : "public"
   auto_init   = true
 }
 
 resource "github_repository_file" "readme" {
-  count               = 2
+  count               = var.repo_count
   repository          = github_repository.terraform_repo[count.index].name
   branch              = "main"
   file                = "README.md"
-  content             = "# This is a README file for the Terraform repository. ${count.index}"
+  content             = "# This is a ${var.env} environment\n\nThis is a README file for the ${github_repository.terraform_repo[count.index].name} repository."
   commit_message      = "Add README file"
   overwrite_on_create = true
 }
 
 resource "github_repository_file" "index_html" {
-  count               = 2
+  count               = var.repo_count
   repository          = github_repository.terraform_repo[count.index].name
   branch              = "main"
   file                = "index.html"
@@ -31,8 +31,14 @@ resource "github_repository_file" "index_html" {
   overwrite_on_create = true
 }
 
-output "repo_names" {
-  value       = github_repository.terraform_repo[*].name
-  description = "Repository names created by Terraform"
-  sensitive   = true
+output "clone_urls" {
+  value       = { for i in github_repository.terraform_repo[*] : i.name => i.http_clone_url }
+  description = "Clone URLs of the created repositories"
+  sensitive   = false
+}
+
+output "varsource" {
+  value       = var.varsource
+  description = "value of the variable source"
+  sensitive   = false
 }
