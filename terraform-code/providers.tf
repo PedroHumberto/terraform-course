@@ -9,5 +9,5 @@ terraform {
 
 # Configure the GitHub Provider
 provider "github" {
-    owner = "PedroHumberto"
+  owner = "PedroHumberto"
 }
