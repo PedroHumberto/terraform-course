@@ -1,11 +1,10 @@
-variable "repo_count" {
+variable "repo_max" {
   type        = number
   description = "Numbers of repositories to create"
   default     = 2
-
   validation {
-    condition     = var.repo_count < 5
-    error_message = "Do not deploy more than 5 repositories at once."
+    condition     = var.repo_max <= 5
+    error_message = "Do not deploy more than 10 repositories at once."
   }
 }
 
@@ -23,4 +22,13 @@ variable "varsource" {
   type        = string
   description = "Source of the variable"
   default     = "variables.tf"
+}
+
+variable "repos" {
+  type        = map(map(string))
+  description = "List of repositories to create"
+  validation {
+    condition     = length(var.repos) <= var.repo_max
+    error_message = "The list of repositories cannot be empty and must not exceed the maximum number of repositories specified by 'repo_max'."
+  }
 }

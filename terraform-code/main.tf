@@ -1,44 +1,53 @@
+
 resource "random_id" "random" {
   byte_length = 2
-  count       = var.repo_count
+  count       = var.repo_max
 }
 
 resource "github_repository" "terraform_repo" {
-  count       = var.repo_count
-  name        = "terraform_repo-${random_id.random[count.index].dec}"
-  description = "Teste de criação de repositório com o Terraform"
+  for_each    = var.repos
+  name        = "terraform_repo-${each.key}"
+  description = "${each.value.lang} - Teste de criação de repositório com o Terraform"
   visibility  = var.env == "dev" ? "private" : "public"
   auto_init   = true
 }
 
+
 resource "github_repository_file" "readme" {
-  count               = var.repo_count
-  repository          = github_repository.terraform_repo[count.index].name
-  branch              = "main"
-  file                = "README.md"
-  content             = "# This is a ${var.env} environment\n\nThis is a README file for the ${github_repository.terraform_repo[count.index].name} repository."
-  commit_message      = "Add README file"
+  for_each   = var.repos
+  repository = github_repository.terraform_repo[each.key].name
+  branch     = "main"
+  file       = "README.md"
+  content = templatefile("templates/readme.tftpl", {
+    env  = var.env
+    lang = each.value.lang
+    repo = github_repository.terraform_repo[each.key].name
+    name = data.github_user.current.name
+  })
   overwrite_on_create = true
+  # lifecycle {
+  #   ignore_changes = [
+  #     content,
+  #   ]
+  # }
 }
 
-resource "github_repository_file" "index_html" {
-  count               = var.repo_count
-  repository          = github_repository.terraform_repo[count.index].name
+resource "github_repository_file" "main" {
+  for_each            = var.repos
+  repository          = github_repository.terraform_repo[each.key].name
   branch              = "main"
-  file                = "index.html"
-  content             = "<html><body><h1>Hello, World! ${count.index}</h1></body></html>"
-  commit_message      = "Add index.html file"
+  file                = each.value.filename
+  content             = each.value.content
+  commit_message      = "Add file"
   overwrite_on_create = true
+  lifecycle {
+    ignore_changes = [
+      content,
+    ]
+  }
 }
 
-output "clone_urls" {
-  value       = { for i in github_repository.terraform_repo[*] : i.name => i.http_clone_url }
-  description = "Clone URLs of the created repositories"
-  sensitive   = false
-}
-
-output "varsource" {
-  value       = var.varsource
-  description = "value of the variable source"
-  sensitive   = false
-}
+# moved {
+#   from = github_repository_file.index_html
+#   to   = github_repository_file.main
+# }
